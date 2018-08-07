@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 )
@@ -45,6 +46,33 @@ type Tracker interface {
 type Stream struct {
 	// Snapshots is a list of window snapshots ordered by time.
 	Snapshots []*Snapshot
+}
+
+// Add adds snapshot to stream
+func (s *Stream) Add(snapshot *Snapshot) {
+	s.Snapshots = append(s.Snapshots, snapshot)
+}
+
+// Flush flushes snapshots into output file
+func (s *Stream) Flush(filename string) {
+	if len(s.Snapshots) > 10 {
+		f, err := openOrCreate(filename)
+		if err != nil {
+			panic(err)
+		}
+
+		defer f.Close()
+		if _, err := f.Stat(); err != nil {
+			panic(err)
+		}
+
+		content := s.Print()
+		if _, err := f.WriteString(content); err != nil {
+			panic(err)
+		}
+
+		s.Snapshots = []*Snapshot{}
+	}
 }
 
 // Print returns a pretty-printed representation of the snapshot.
@@ -236,4 +264,16 @@ type Winfo struct {
 // Print returns a pretty-printed representation of the snapshot.
 func (w Winfo) Print() string {
 	return fmt.Sprintf("[%s|%s|%s]", w.App, w.SubApp, w.Title)
+}
+
+func openOrCreate(filename string) (*os.File, error) {
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		if os.IsNotExist(err) {
+			f, err = os.Create(filename)
+			return f, err
+		}
+	}
+
+	return f, err
 }

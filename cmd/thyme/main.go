@@ -6,31 +6,34 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strconv"
+	"time"
 
+	"github.com/elanq/thyme"
 	"github.com/jessevdk/go-flags"
-	"github.com/sourcegraph/thyme"
 )
 
 var CLI = flags.NewNamedParser("thyme", flags.PrintErrors|flags.PassDoubleDash)
 
 func init() {
 	CLI.Usage = `
-thyme - automatically track which applications you use and for how long.
+			thyme - automatically track which applications you use and for how long.
 
-  \|//   thyme is a simple time tracker that tracks active window names and collects
- W Y/    statistics over active, open, and visible windows. Statistics are collected
-  \|  ,  into a local JSON file, which is used to generate a pretty HTML report.
-   \_/
-    \
-     \_  thyme is a local CLI tool and does not send any data over the network.
+			  \|//   thyme is a simple time tracker that tracks active window names and collects
+			 W Y/    statistics over active, open, and visible windows. Statistics are collected
+			  \|  ,  into a local JSON file, which is used to generate a pretty HTML report.
+			   \_/
+			    \
+			     \_  thyme is a local CLI tool and does not send any data over the network.
 
-Example usage:
+			Example usage:
 
-  thyme dep
-  thyme track -o <file>
-  thyme show  -i <file> -w stats > viz.html
+			  thyme dep
+			  thyme track -o <file>
+			  thyme show  -i <file> -w stats > viz.html
+			  thyme trackbg -o <file>
 
-`
+			`
 
 	if _, err := CLI.AddCommand("track", "record current windows", "Record current window metadata as JSON printed to stdout or a file. If a filename is specified and the file already exists, Thyme will append the new snapshot data to the existing data.", &trackCmd); err != nil {
 		log.Fatal(err)
@@ -40,6 +43,51 @@ Example usage:
 	}
 	if _, err := CLI.AddCommand("dep", "dep install instructions", "Show installation instructions for required external dependencies (which vary depending on your OS and windowing system).", &depCmd); err != nil {
 		log.Fatal(err)
+	}
+	if _, err := CLI.AddCommand("trackbg", "record windows in background", "same with track command, but this will leaves thyme as process in background", &trackBg); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// TrackBackground is the subcommand that tracks application usage in background
+type TrackBackground struct {
+	Out string `long:"out" short:"o" description:"output file"`
+}
+
+var trackBg TrackBackground
+
+func (bg *TrackBackground) Execute([]string) error {
+	t, err := getTracker()
+	if err != nil {
+		return err
+	}
+
+	if bg.Out == "" {
+		filename := "snapshot-" + now()
+		bg.Out = filename
+	}
+	bg.loop(t)
+
+	return nil
+}
+
+func (bg *TrackBackground) loop(t thyme.Tracker) {
+	stream := &thyme.Stream{}
+
+	for {
+		snap, err := t.Snap()
+		if err != nil {
+			panic(err)
+		}
+		stream.Add(snap)
+
+		out, err := json.Marshal(snap)
+		if err != nil {
+			panic(err)
+		}
+
+		stream.Flush(bg.Out)
+		fmt.Println(string(out))
 	}
 }
 
@@ -183,4 +231,8 @@ func getTracker() (thyme.Tracker, error) {
 	default:
 		return thyme.NewTracker("linux"), nil
 	}
+}
+
+func now() string {
+	return strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
 }
