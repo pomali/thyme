@@ -81,13 +81,12 @@ func (bg *TrackBackground) loop(t thyme.Tracker) {
 		}
 		stream.Add(snap)
 
-		out, err := json.Marshal(snap)
+		_, err = json.Marshal(snap)
 		if err != nil {
 			panic(err)
 		}
 
 		stream.Flush(bg.Out)
-		fmt.Println(string(out))
 	}
 }
 

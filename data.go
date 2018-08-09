@@ -3,86 +3,9 @@ package thyme
 import (
 	"bytes"
 	"fmt"
-	"log"
-	"os"
 	"strings"
 	"time"
 )
-
-// trackers is the list of Tracker constructors that are available on this system. Tracker implementations should call
-// the RegisterTracker function to make themselves available.
-var trackers = make(map[string]func() Tracker)
-
-// RegisterTracker makes a Tracker constructor available to clients of this package.
-func RegisterTracker(name string, t func() Tracker) {
-	if _, exists := trackers[name]; exists {
-		log.Fatalf("a tracker already exists with the name %s", name)
-	}
-	trackers[name] = t
-}
-
-// NewTracker returns a new Tracker instance whose type is `name`.
-func NewTracker(name string) Tracker {
-	if _, exists := trackers[name]; !exists {
-		log.Fatalf("no Tracker constructor has been registered with name %s", name)
-	}
-	return trackers[name]()
-}
-
-// Tracker tracks application usage. An implementation that satisfies
-// this interface is required for each OS windowing system Thyme
-// supports.
-type Tracker interface {
-	// Snap returns a Snapshot reflecting the currently in-use windows
-	// at the current time.
-	Snap() (*Snapshot, error)
-
-	// Deps returns a string listing the dependencies that still need
-	// to be installed with instructions for how to install them.
-	Deps() string
-}
-
-// Stream represents all the sampling data gathered by Thyme.
-type Stream struct {
-	// Snapshots is a list of window snapshots ordered by time.
-	Snapshots []*Snapshot
-}
-
-// Add adds snapshot to stream
-func (s *Stream) Add(snapshot *Snapshot) {
-	s.Snapshots = append(s.Snapshots, snapshot)
-}
-
-// Flush flushes snapshots into output file
-func (s *Stream) Flush(filename string) {
-	if len(s.Snapshots) > 10 {
-		f, err := openOrCreate(filename)
-		if err != nil {
-			panic(err)
-		}
-
-		defer f.Close()
-		if _, err := f.Stat(); err != nil {
-			panic(err)
-		}
-
-		content := s.Print()
-		if _, err := f.WriteString(content); err != nil {
-			panic(err)
-		}
-
-		s.Snapshots = []*Snapshot{}
-	}
-}
-
-// Print returns a pretty-printed representation of the snapshot.
-func (s Stream) Print() string {
-	var b bytes.Buffer
-	for _, snap := range s.Snapshots {
-		fmt.Fprintf(&b, "%s", snap.Print())
-	}
-	return string(b.Bytes())
-}
 
 // Snapshot represents the current state of all in-use application
 // windows at a moment in time.
@@ -264,16 +187,4 @@ type Winfo struct {
 // Print returns a pretty-printed representation of the snapshot.
 func (w Winfo) Print() string {
 	return fmt.Sprintf("[%s|%s|%s]", w.App, w.SubApp, w.Title)
-}
-
-func openOrCreate(filename string) (*os.File, error) {
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		if os.IsNotExist(err) {
-			f, err = os.Create(filename)
-			return f, err
-		}
-	}
-
-	return f, err
 }
