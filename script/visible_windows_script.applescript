@@ -7,6 +7,6 @@ repeat with proc in listOfProcesses
 	log "PROCESS " & procID & ":" & procName
 	set app_windows to (every window of proc)
 	repeat with each_window in app_windows
-		log "WINDOW -1:" & (name of each_window) as string
+		log "WINDOW -:" & (name of each_window) as string
 	end repeat
 end repeat
