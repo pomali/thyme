@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"hash/fnv"
-	"io/ioutil"
+  //"io/ioutil"
 	"log"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
 )
+
+//go:generate go run script/include.go
 
 var (
 	// allWindowsScript fetches the windows of all scriptable applications.  It
@@ -34,9 +36,9 @@ var (
 
 func init() {
 	RegisterTracker("darwin", NewDarwinTracker)
-	allWindowsScript = loadScript("script/all_windows_script.applescript")
-	activeWindowsScript = loadScript("script/active_windows_script.applescript")
-	visibleWindowsScript = loadScript("script/visible_windows_script.applescript")
+	allWindowsScript = all_windows_script
+	activeWindowsScript = active_windows_script
+	visibleWindowsScript = visible_windows_script
 }
 
 // DarwinTracker tracks application usage using the "System Events" API in AppleScript. Due to the liminations of this
@@ -53,6 +55,7 @@ func NewDarwinTracker() Tracker {
 
 func (t *DarwinTracker) Deps() string {
 	return `
+  v0.1
 		You will need to enable privileges for "Terminal" in System Preferences > Security & Privacy > Privacy > Accessibility.
 		See https://support.apple.com/en-us/HT202802 for details.
 
@@ -193,12 +196,6 @@ func parseWindowLine(line string, procId int64) (string, int64) {
 	return win, winID
 }
 
-func loadScript(loc string) string {
-	if s, err := ioutil.ReadFile(loc); err == nil {
-		return string(s)
-	}
-	return string([]byte(""))
-}
 
 // hash converts a string to an integer hash
 func hash(s string) int64 {
