@@ -3,16 +3,16 @@ package thyme
 const (
 active_windows_script = `tell application "System Events"
 	set proc to (first application process whose frontmost is true)
+	set procName to (name of proc)
+	try
+		tell application procName
+			log "WINDOW " & (id of window 1) & ":" & (name of window 1)
+		end tell
+	on error e
+		log "WINDOW " & (id of proc) & ":" & (name of first window of proc)
+	end try
 end tell
 
-set procName to (name of proc)
-try
-	tell application procName
-		log "WINDOW " & (id of window 1) & ":" & (name of window 1)
-	end tell
-on error e
-		log "WINDOW " & (id of proc) & ":" & (name of first window of proc)
-end try
 `
 all_windows_script = `tell application "System Events"
 	repeat with proc in (every application process where background only is false)
@@ -26,15 +26,16 @@ all_windows_script = `tell application "System Events"
 end tell`
 visible_windows_script = `tell application "System Events"
 	set listOfProcesses to (every process whose visible is true)
-end tell
-repeat with proc in listOfProcesses
-	set procName to (name of proc)
-	set procID to (id of proc)
-	log "PROCESS " & procID & ":" & procName
-	set app_windows to (every window of proc)
-	repeat with each_window in app_windows
-		log "WINDOW -:" & (name of each_window) as string
+	
+	repeat with proc in listOfProcesses
+		set procName to (name of proc)
+		set procID to (id of proc)
+		log "PROCESS " & procID & ":" & procName
+		set app_windows to (every window of proc)
+		repeat with each_window in app_windows
+			log "WINDOW -:" & (name of each_window) as string
+		end repeat
 	end repeat
-end repeat
-`
+	
+end tell`
 )
